@@ -15,13 +15,16 @@ class SpaceMouseJoy(Node):
         self.publisher_ = self.create_publisher(Joy, '/spacemouse_joy', 10)
         self.timer = self.create_timer(self.TIMER_FREQUENCY, self.publish_joy_data)  # Timer for publishing Joy messages
         self.reconnect_timer = None
-
+        self.device=None
         failed = True
 
         while failed:
             try:
-                pyspacemouse.open()
-                failed = False
+                self.device = pyspacemouse.open()
+                if self.device is not None:
+                    failed = False
+                else: 
+                    self.get_logger().error('Failed to connect SpaceMouse: No device found.')
             except Exception as e:
                 self.get_logger().error(f'Failed to connect SpaceMouse: {e}')
 
@@ -42,7 +45,8 @@ class SpaceMouseJoy(Node):
     def attempt_reconnect(self):
         """Attempts to reconnect to the SpaceMouse."""
         try:
-            if pyspacemouse.open():
+            self.device = pyspacemouse.open()
+            if self.device is not None:
                 self.get_logger().info('Reconnected to SpaceMouse.')
                 self.stop_reconnect_timer()
             else:
@@ -53,7 +57,7 @@ class SpaceMouseJoy(Node):
     def publish_joy_data(self):
         """Reads SpaceMouse state and publishes a Joy message."""
         try:
-            state = pyspacemouse.read()
+            state = self.device.read()
             if state is None:
                 self.get_logger().warn('SpaceMouse returned no data! Publishing zero values.')
                 state = self.create_zero_state()
